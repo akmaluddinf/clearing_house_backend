@@ -145,8 +145,8 @@ function createTable(doc, data, startX, startY, columnWidths, rowHeight) {
 app.post('/download', (req, res) => {
     const programStudi = req.body.programStudi;
     const idFakultas = req.body.fakultas;
+    const gelombang = req.body.gelombang;
     let namaFakultas = '';
-    console.log(typeof (idFakultas));
 
     switch (idFakultas) {
         case "1":
@@ -235,7 +235,7 @@ app.post('/download', (req, res) => {
 
                 // Tambahkan konten PDF
                 const text1 = "REKAPITULASI NILAI UJIAN SARINGAN MASUK CALON MAHASISWA";
-                const text2 = "PMB 2024/2025 GELOMBANG 2 UNIVERSITAS PASUNDAN";
+                const text2 = `PMB 2024/2025 GELOMBANG ${gelombang} UNIVERSITAS PASUNDAN`;
 
                 const textFakultas = `${namaFakultas.toUpperCase()}`;
                 const textProdi = `PROGRAM STUDI ${programStudi.toUpperCase()}`;
@@ -315,9 +315,9 @@ app.post('/download', (req, res) => {
         });
 });
 
-// ==================================================DOWNLOAD DISTRIBUSI NILAI TES======================================
+// ==================================================DOWNLOAD ESTIMASI DP======================================
 
-function createTableEstimasiDP(doc, data, startX, startY, columnWidths, rowHeight) {
+function createTableEstimasiDP(doc, data, startX, startY, columnWidths, rowHeight, rowColor, fontColor) {
     const numColumns = columnWidths.length;
     let currentY = startY;
 
@@ -333,7 +333,7 @@ function createTableEstimasiDP(doc, data, startX, startY, columnWidths, rowHeigh
             const align = 'center';
             const text = header.text;
 
-            doc.rect(colStartX, currentY, width, rowHeight).stroke();
+            doc.lineWidth(0.5).rect(colStartX, currentY, width, rowHeight).stroke(); // Garis header tidak tebal
             doc.text(text, colStartX + 5, currentY + 5, {
                 width: width - 10,
                 align: align
@@ -351,7 +351,7 @@ function createTableEstimasiDP(doc, data, startX, startY, columnWidths, rowHeigh
             const align = 'center';
             const text = header;
 
-            doc.rect(colStartX, currentY, width, rowHeight).stroke();
+            doc.lineWidth(0.5).rect(colStartX, currentY, width, rowHeight).stroke(); // Garis header tidak tebal
             doc.text(text, colStartX + 5, currentY + 5, {
                 width: width - 10,
                 align: align
@@ -383,10 +383,20 @@ function createTableEstimasiDP(doc, data, startX, startY, columnWidths, rowHeigh
     // Menggambar baris tabel
     data.rows.forEach((row, rowIndex) => {
         checkPageBreak(); // Periksa apakah perlu halaman baru sebelum menggambar baris
-        doc.rect(startX, currentY, columnWidths.reduce((a, b) => a + b, 0), rowHeight).stroke();
+
+        // Periksa apakah baris ini adalah baris ketiga (index 2, karena 0-based index)
+        if (rowIndex === 0) {
+            // Gambar latar belakang untuk baris ketiga (baris data pertama)
+            doc.rect(startX, currentY, columnWidths.reduce((a, b) => a + b, 0), rowHeight).fillAndStroke(`${rowColor}`, 'black'); // Warna latar belakang abu-abu
+            doc.fillColor(fontColor);
+        } else {
+            // Mengatur ulang warna font ke warna default (hitam)
+            doc.fillColor('black');
+        }
+
+        doc.lineWidth(0.5).rect(startX, currentY, columnWidths.reduce((a, b) => a + b, 0), rowHeight).stroke();
         row.forEach((cell, cellIndex) => {
             const colStartX = startX + columnWidths.slice(0, cellIndex).reduce((a, b) => a + b, 0);
-            // const align = cellIndex === 1 || cellIndex === 2 || cellIndex === 3  ? 'right' : 'left';
             const align = cellIndex !== 0 && cellIndex !== 8 ? 'right' : cellIndex === 0 ? 'left' : 'center';
             doc.text(cell.toString(), colStartX + 5, currentY + 5, {
                 width: columnWidths[cellIndex] - 10,
@@ -403,33 +413,48 @@ function createTableEstimasiDP(doc, data, startX, startY, columnWidths, rowHeigh
 
 app.post('/downloadEstimasiDP', (req, res) => {
     const idFakultas = req.body.fakultas;
+    const gelombang = req.body.gelombang;
     let namaFakultas = '';
     let namaDekan = '';
+    let rowColor = '';
+    let fontColor = '';
 
     switch (idFakultas) {
         case "1":
             namaFakultas = 'Fakultas Hukum';
             namaDekan = "Prof. Dr. Anthon Fredi Susanto, S.H., M.Hum.";
+            rowColor = '#FF0000';
+            fontColor = '#FFFFFF';
             break;
         case "2":
             namaFakultas = 'Fakultas Ilmu Sosial dan Ilmu Politik';
             namaDekan = "Dr. Kunkunrat, M.Si.";
+            rowColor = '#8EA9DB';
+            fontColor = '#000000';
             break;
         case "3":
             namaFakultas = 'Fakultas Teknik';
             namaDekan = "Prof. Dr. Ir. Yusman Taufik, MP.";
+            rowColor = '#ED7D31';
+            fontColor = '#000000';
             break;
         case "4":
             namaFakultas = 'Fakultas Ekonomi dan Bisnis';
             namaDekan = "Dr. Juanim, S.E., M.Si.";
+            rowColor = '#FFFF00';
+            fontColor = '#000000';
             break;
         case "5":
             namaFakultas = 'Keguruan dan Ilmu Pendidikan';
             namaDekan = "Dr. Hj. Dini Riani, S.E., M.M.";
+            rowColor = '#70AD47';
+            fontColor = '#000000';
             break;
         case "6":
             namaFakultas = 'Fakultas Ilmu Seni dan Sastra';
             namaDekan = "Dr. Hj. Senny Suzanna Alwasilah, S.S., M.Pd.";
+            rowColor = '#7030A0';
+            fontColor = '#FFFFFF';
             break;
     }
 
@@ -491,13 +516,13 @@ app.post('/downloadEstimasiDP', (req, res) => {
                     });
                 });
 
-            
+
                 // Menambahkan image
                 doc.image('logo_unpas.PNG', 35, 50, { width: 50 });
 
-                const text1 = 'Estimasi Pendapatan dari Dana Pembangunan (DP)';
+                const text1 = 'Estimasi Pendapatan dari Dana Pengembangan (DP)';
                 const text2 = 'Asumsi Diterima di Pilihan Program Studi Kesatu';
-                const text3 = 'USM Gelombang 2';
+                const text3 = `USM Gelombang ${gelombang}`;
                 const text4 = 'Tahun 2024/2025';
 
                 const text5 = "Mengetahui,";
@@ -533,12 +558,12 @@ app.post('/downloadEstimasiDP', (req, res) => {
                 };
 
                 const totalTagihanFakultas = totalMahasiswa * danaPembangunan;
-                
+
                 // Sisipkan baris untuk nama fakultas dan total mahasiswa
                 const namaFakultasRow = [
                     `${capitalLetter(namaFakultas)}`,
                     formatRupiah(totalTagihanFakultas),
-                    "0", 
+                    "0",
                     "0",
                     formatRupiah(totalTagihanFakultas),
                     "0",
@@ -546,27 +571,27 @@ app.post('/downloadEstimasiDP', (req, res) => {
                     "0",
                     totalMahasiswa.toString(),
                 ];
-                
+
                 tableData.rows.push(namaFakultasRow);
-                
+
                 // Tambahkan data program studi ke dalam rows
                 Object.keys(jumlahMahasiswaPerProdi).forEach(programStudi => {
                     const dp = jumlahMahasiswaPerProdi[programStudi].dp || 0;
                     const jumlahMahasiswa = jumlahMahasiswaPerProdi[programStudi].count || 0;
                     const totalTagihanPerProdi = dp * jumlahMahasiswa;
-                
+
                     const rowData = [
                         programStudi,
                         formatRupiah(totalTagihanPerProdi),
-                        "0", 
-                        "0", 
+                        "0",
+                        "0",
                         formatRupiah(totalTagihanPerProdi),
-                        "0", 
-                        "0", 
-                        "0", 
+                        "0",
+                        "0",
+                        "0",
                         jumlahMahasiswa.toString(),
                     ];
-                
+
                     tableData.rows.push(rowData);
                 });
 
@@ -575,7 +600,7 @@ app.post('/downloadEstimasiDP', (req, res) => {
                 const startX = 30;
                 const startY = 150;
 
-                createTableEstimasiDP(doc, tableData, startX, startY, columnWidths, rowHeight);
+                createTableEstimasiDP(doc, tableData, startX, startY, columnWidths, rowHeight, rowColor, fontColor);
 
                 doc.font('Arial Font')
                     .fontSize(10).text(text5, 40, 325, { align: 'left' });
@@ -601,6 +626,244 @@ app.post('/downloadEstimasiDP', (req, res) => {
             res.status(500).send('Error reading Excel file');
         });
 });
+
+
+// ==================================================DOWNLOAD Distribusi Nilai Tes======================================
+function createTableDistribusiNilai(doc, data, startX, startY, columnWidths, rowHeight) {
+    const numColumns = columnWidths.length;
+    let currentY = startY;
+
+    function drawHeader() {
+        doc.font('Arial Bold Font').fontSize(11); // Mengatur font untuk header
+        doc.rect(startX, currentY, columnWidths.reduce((a, b) => a + b, 0), rowHeight);
+        data.header.forEach((header, i) => {
+            const colStartX = startX + columnWidths.slice(0, i).reduce((a, b) => a + b, 0);
+            doc.text(header, colStartX + 5, currentY + 5, {
+                width: columnWidths[i] - 10,
+                align: 'center' // Mengatur teks menjadi rata tengah
+            });
+            doc.lineWidth(0.5).moveTo(colStartX, currentY).lineTo(colStartX, currentY + rowHeight);
+        });
+        // Garis vertikal terakhir untuk header
+        doc.lineWidth(0.5).moveTo(startX + columnWidths.reduce((a, b) => a + b, 0), currentY).lineTo(startX + columnWidths.reduce((a, b) => a + b, 0), currentY + rowHeight);
+        currentY += rowHeight; // Pindah ke baris berikutnya
+    }
+
+    function checkPageBreak() {
+        if (currentY + rowHeight > doc.page.height - doc.page.margins.bottom) {
+            doc.addPage();
+            currentY = doc.page.margins.top;
+            drawHeader();
+        }
+    }
+
+    // Menggambar header tabel untuk halaman pertama
+    drawHeader();
+
+    // Mengatur font untuk baris data
+    doc.font('Arial Font').fontSize(11);
+
+    // Menggambar baris tabel
+    data.rows.forEach((row, rowIndex) => {
+        checkPageBreak(); // Periksa apakah perlu halaman baru sebelum menggambar baris
+        doc.font('Arial Font').fontSize(11);
+        doc.rect(startX, currentY, columnWidths.reduce((a, b) => a + b, 0), rowHeight).stroke();
+
+        if (row[0] === "JUMLAH") {
+            // Mengatur font bold untuk baris "JUMLAH"
+            doc.font('Arial Bold Font').fontSize(11);
+
+            // Menggabungkan kolom "WARNA" dan "NILAI" untuk baris "JUMLAH"
+            const colspanWidth = columnWidths[0] + columnWidths[1];
+            doc.text(row[0], startX + 5, currentY + 5, {
+                width: colspanWidth - 10,
+                align: 'center'
+            });
+            doc.lineWidth(0.5).moveTo(startX, currentY).lineTo(startX, currentY + rowHeight).stroke();
+            doc.lineWidth(0.5).moveTo(startX + colspanWidth, currentY).lineTo(startX + colspanWidth, currentY + rowHeight).stroke();
+
+            // Menggambar teks untuk kolom yang tidak digabungkan dengan alignment yang sesuai
+            const colStartX1 = startX + colspanWidth;
+            doc.text(row[2], colStartX1 + 5, currentY + 5, {
+                width: columnWidths[2] - 10,
+                align: 'center'
+            });
+            doc.lineWidth(0.5).moveTo(colStartX1, currentY).lineTo(colStartX1, currentY + rowHeight).stroke();
+
+            const colStartX2 = colStartX1 + columnWidths[2];
+            doc.text(row[3], colStartX2 + 5, currentY + 5, {
+                width: columnWidths[3] - 10,
+                align: 'right'
+            });
+            doc.lineWidth(0.5).moveTo(colStartX2, currentY).lineTo(colStartX2, currentY + rowHeight).stroke();
+
+            doc.lineWidth(0.5).moveTo(startX + columnWidths.reduce((a, b) => a + b, 0), currentY).lineTo(startX + columnWidths.reduce((a, b) => a + b, 0), currentY + rowHeight).stroke();
+        } else {
+            row.forEach((cell, cellIndex) => {
+                const colStartX = startX + columnWidths.slice(0, cellIndex).reduce((a, b) => a + b, 0);
+                const align = cellIndex === 3 ? 'right' : cellIndex === 0 ? 'left' : 'center';
+                doc.text(cell, colStartX + 5, currentY + 5, {
+                    width: columnWidths[cellIndex] - 10,
+                    align: align
+                });
+                doc.lineWidth(0.5).moveTo(colStartX, currentY).lineTo(colStartX, currentY + rowHeight).stroke();
+            });
+            // Garis vertikal terakhir untuk setiap baris
+            doc.lineWidth(0.5).moveTo(startX + columnWidths.reduce((a, b) => a + b, 0), currentY).lineTo(startX + columnWidths.reduce((a, b) => a + b, 0), currentY + rowHeight).stroke();
+        }
+        currentY += rowHeight; // Pindah ke baris berikutnya
+    });
+}
+
+
+app.post('/downloadDistribusiNilai', (req, res) => {
+    const programStudi = req.body.programStudi;
+    const idFakultas = req.body.fakultas;
+    const gelombang = req.body.gelombang;
+    let namaFakultas = '';
+    let namaDekan = '';
+
+    switch (idFakultas) {
+        case "1":
+            namaFakultas = 'Fakultas Hukum';
+            namaDekan = "Prof. Dr. Anthon Fredi Susanto, S.H., M.Hum.";
+            break;
+        case "2":
+            namaFakultas = 'Fakultas Ilmu Sosial dan Ilmu Politik';
+            namaDekan = "Dr. Kunkunrat, M.Si.";
+            break;
+        case "3":
+            namaFakultas = 'Fakultas Teknik';
+            namaDekan = "Prof. Dr. Ir. Yusman Taufik, MP.";
+            break;
+        case "4":
+            namaFakultas = 'Fakultas Ekonomi dan Bisnis';
+            namaDekan = "Dr. Juanim, S.E., M.Si.";
+            break;
+        case "5":
+            namaFakultas = 'Keguruan dan Ilmu Pendidikan';
+            namaDekan = "Dr. Hj. Dini Riani, S.E., M.M.";
+            break;
+        case "6":
+            namaFakultas = 'Fakultas Ilmu Seni dan Sastra';
+            namaDekan = "Dr. Hj. Senny Suzanna Alwasilah, S.S., M.Pd.";
+            break;
+    }
+
+    const workbook = new exceljs.Workbook();
+    workbook.xlsx.readFile('clearinghouse.xlsx')
+        .then(() => {
+            const worksheet = workbook.getWorksheet(1);
+            const categories = {
+                'Biru': { range: [50.01, Infinity], count: 0, dp: 0 },
+                'Hijau': { range: [41, 50], count: 0, dp: 0 },
+                'Kuning': { range: [31, 40.99], count: 0, dp: 0 },
+                'Merah': { range: [20, 30.99], count: 0, dp: 0 },
+                'Putih': { range: [-Infinity, 19.99], count: 0, dp: 0 }
+            };
+
+            worksheet.eachRow((row, rowNumber) => {
+                if (rowNumber !== 1) {
+                    const programStudiFromSheet = row.getCell(5).value;
+                    const nilai = row.getCell(9).value;
+                    const dp = row.getCell(17).value;
+
+                    if (programStudiFromSheet === programStudi) {
+                        for (const color in categories) {
+                            const [min, max] = categories[color].range;
+                            if (nilai >= min && nilai <= max) {
+                                categories[color].count += 1;
+                                categories[color].dp += dp;
+                                break;
+                            }
+                        }
+                    }
+                }
+            });
+
+            const pdfPath = `BUKTI_WISUDA_${programStudi}.pdf`;
+            const doc = new pdfkit({ size: 'A4', layout: 'portrait', margin: { right: 10 } });
+            const buffers = [];
+            doc.on('data', buffers.push.bind(buffers));
+            doc.on('end', () => {
+                const pdfData = Buffer.concat(buffers);
+                const pdfPathOnServer = `pdf_output/${pdfPath}`;
+                fs.writeFile(pdfPathOnServer, pdfData, (err) => {
+                    if (err) {
+                        console.error('Error saving PDF file:', err);
+                        res.status(500).send('Error saving PDF file');
+                    } else {
+                        const infoLog = `${getCurrentTimestamp()} - Download Success for Program Studi: ${programStudi}\n`;
+                        fs.appendFileSync(`logDownloadSuccess.log`, infoLog);
+                        res.set({
+                            'Content-Type': 'application/pdf',
+                            'Content-Disposition': `attachment; filename=${pdfPath}`,
+                            'Content-Length': pdfData.length
+                        });
+                        res.send(pdfData);
+                    }
+                });
+            });
+
+            const text1 = `DISTRIBUSI NILAI TEST - PMB 2024/2025 Gelombang ${gelombang}`;
+            const text2 = `${capitalLetter(namaFakultas)}`;
+            const text3 = `Program Studi ${capitalLetter(programStudi)}`;
+
+            const text4 = `Bandung, ${today}`;
+
+            const text5 = "Mengetahui,";
+            const text6 = `Dekan ${capitalLetter(namaFakultas)},`;
+            const text7 = namaDekan;
+
+            doc.registerFont('Arial Font', 'fonts/arial.ttf');
+            doc.registerFont('Arial Bold Font', 'fonts/arial-bold.ttf');
+            doc.font('Arial Bold Font')
+                .fontSize(11).text(text1, 70, 50, { align: 'left' });
+            doc.fontSize(11).text(text2, 70, 100, { align: 'left' });
+            doc.fontSize(11).text(text3, 70, 117, { align: 'left' });
+
+            const totalWarna = categories.Biru.count + categories.Hijau.count + categories.Kuning.count + categories.Merah.count + categories.Putih.count;
+            const totalDP = categories.Biru.dp + categories.Hijau.dp + categories.Kuning.dp + categories.Merah.dp + categories.Putih.dp;
+
+            // Mengatur data untuk tabel
+            const tableData = {
+                header: ["WARNA", "NILAI", "JUMLAH", "DANA PENGEMBANGAN"],
+                rows: [
+                    ["Biru", "> 50", categories.Biru.count, formatRupiah(categories.Biru.dp)],
+                    ["Hijau", "41 - 50", categories.Hijau.count, formatRupiah(categories.Hijau.dp)],
+                    ["Kuning", "31 - 40", categories.Kuning.count, formatRupiah(categories.Kuning.dp)],
+                    ["Merah", "21 - 30", categories.Merah.count, formatRupiah(categories.Merah.dp)],
+                    ["Putih", "< 20", categories.Putih.count, formatRupiah(categories.Putih.dp)],
+                    ["JUMLAH", "", totalWarna, formatRupiah(totalDP)]
+                ]
+            };
+
+            const columnWidths = [80, 60, 60, 160]; // Penyesuaian lebar kolom
+            const rowHeight = 20;
+            const startX = 70;
+            const startY = 150;
+
+            createTableDistribusiNilai(doc, tableData, startX, startY, columnWidths, rowHeight);
+
+
+            doc.font('Arial Font')
+                .fontSize(11).text(text4, 70, 320, { align: 'left' });
+            doc.fontSize(11).text(text5, 70, 337, { align: 'left' });
+            doc.fontSize(11).text(text6, 70, 354, { align: 'left' });
+            doc.fontSize(11).text(text7, 70, 420, { align: 'left' });
+
+
+            doc.end();
+        })
+        .catch((error) => {
+            console.error('Error reading Excel file:', error);
+            res.status(500).send('Error reading Excel file');
+        });
+});
+
+
+
+
 
 
 // Endpoint untuk mendapatkan semua data fakultas
